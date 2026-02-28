@@ -1,0 +1,23 @@
+# ===========================================
+# BUSINESS RADAR CORE - REQUIREMENTS
+# ===========================================
+
+# Core dependencies
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+sqlalchemy>=2.0.0
+
+# AI/LLM
+dashscope>=1.14.0          # Qwen API (Alibaba)
+ollama>=0.1.0              # Local LLM models
+
+# NLP
+natasha>=1.6.0             # Russian NLP
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Development
+black>=23.0.0
+ruff>=0.1.0

@@ -1,67 +1,62 @@
 """
 Module 1: Debt Recovery (Маған қарыз / Мне должны)
-Business logic only - no Telegram dependencies
+Business logic with AI-powered verdicts
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
+from business_radar_core.utils.llm import QwenAnalyzer
 
 
 class DebtVerdictGenerator:
     """
     Генератор вердиктов для модуля долгов
     
-    Анализирует данные о долге и определяет зону риска:
-    - 🟢 Зелёная: хорошие шансы на возврат
-    - 🟡 Жёлтая: риски 50/50
-    - 🔴 Красная: низкие шансы на возврат
+    Поддерживает:
+    - Rule-based анализ (базовый)
+    - AI анализ через Qwen (опционально)
     """
     
-    def __init__(self):
+    def __init__(self, use_ai: bool = False, analyzer: Optional[QwenAnalyzer] = None):
         self.risk_factors: List[str] = []
+        self.use_ai = use_ai
+        self.analyzer = analyzer or QwenAnalyzer()
     
     def analyze(self, data: Dict) -> Dict:
         """
         Анализ данных о долге
         
-        :param data: Словарь с данными:
-            - amount: сумма долга
-            - date: когда возник долг
-            - debtor_type: тип должника
-            - evidence: доказательства
-            - contact_status: статус контакта
+        :param data: Словарь с данными о долге
         :return: Результат анализа с вердиктом
         """
+        # Если включен AI и анализатор доступен
+        if self.use_ai and self.analyzer:
+            try:
+                ai_result = self.analyzer.analyze_debt(data)
+                if ai_result.get("ai_generated"):
+                    return ai_result
+            except Exception as e:
+                # Fallback на rule-based при ошибке AI
+                pass
+        
+        # Rule-based анализ
         self.risk_factors = []
-        
-        amount = data.get("amount", "0")
-        date = data.get("date", "")
-        debtor_type = data.get("debtor_type", "")
-        evidence = data.get("evidence", "")
-        contact = data.get("contact_status", "")
-        
-        # Анализ суммы
-        self._analyze_amount(amount)
-        
-        # Анализ срока
-        self._analyze_date(date)
-        
-        # Анализ типа должника
-        self._analyze_debtor_type(debtor_type)
-        
-        # Анализ доказательств
-        self._analyze_evidence(evidence)
-        
-        # Анализ контакта
-        self._analyze_contact(contact)
-        
-        # Генерация вердикта
+        self._analyze_all(data)
         verdict = self._generate_verdict()
         
         return {
             "verdict": verdict["text"],
             "zone": verdict["zone"],
             "risk_factors": self.risk_factors,
-            "recommendation": self._get_recommendation(verdict["zone"])
+            "recommendation": self._get_recommendation(verdict["zone"]),
+            "ai_generated": False
         }
+    
+    def _analyze_all(self, data: Dict) -> None:
+        """Запуск всех анализов"""
+        self._analyze_amount(data.get("amount", "0"))
+        self._analyze_date(data.get("date", ""))
+        self._analyze_debtor_type(data.get("debtor_type", ""))
+        self._analyze_evidence(data.get("evidence", ""))
+        self._analyze_contact(data.get("contact_status", ""))
     
     def _analyze_amount(self, amount: str) -> None:
         """Анализ суммы долга"""
@@ -104,20 +99,11 @@ class DebtVerdictGenerator:
     def _generate_verdict(self) -> Dict:
         """Генерация итогового вердикта"""
         if len(self.risk_factors) >= 3:
-            return {
-                "text": "🔴 Красная зона\n\nШансы на возврат низкие.",
-                "zone": "red"
-            }
+            return {"text": "🔴 Красная зона\n\nШансы на возврат низкие.", "zone": "red"}
         elif len(self.risk_factors) >= 1:
-            return {
-                "text": "🟡 Жёлтая зона\n\nШансы 50/50.",
-                "zone": "yellow"
-            }
+            return {"text": "🟡 Жёлтая зона\n\nШансы 50/50.", "zone": "yellow"}
         else:
-            return {
-                "text": "🟢 Зелёная зона\n\nХорошие шансы на возврат.",
-                "zone": "green"
-            }
+            return {"text": "🟢 Зелёная зона\n\nХорошие шансы на возврат.", "zone": "green"}
     
     def _get_recommendation(self, zone: str) -> str:
         """Рекомендация по действиям"""
@@ -129,19 +115,20 @@ class DebtVerdictGenerator:
         return recommendations.get(zone, "")
 
 
-def generate_free_verdict(data: Dict) -> str:
+def generate_free_verdict(data: Dict, use_ai: bool = False) -> str:
     """
-    Генерация бесплатного вердикта (для Telegram бота)
+    Генерация бесплатного вердикта
     
     :param data: Данные о долге
+    :param use_ai: Использовать AI
     :return: Текст вердикта
     """
-    generator = DebtVerdictGenerator()
+    generator = DebtVerdictGenerator(use_ai=use_ai)
     result = generator.analyze(data)
     
     verdict_text = result["verdict"]
     
-    if result["risk_factors"]:
+    if not result.get("ai_generated") and result["risk_factors"]:
         verdict_text += "\n\nПроблемы:\n• " + "\n• ".join(result["risk_factors"])
     
     return verdict_text

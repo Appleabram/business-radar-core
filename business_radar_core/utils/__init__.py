@@ -11,6 +11,7 @@ from business_radar_core.utils.narrative import (
     SPECIAL_NARRATIVES,
 )
 from business_radar_core.utils.slang import SlangNormalizer, normalizer
+from business_radar_core.utils.llm import QwenAnalyzer, analyzer
 
 __all__ = [
     "get_narrative_explanation",
@@ -21,4 +22,6 @@ __all__ = [
     "SPECIAL_NARRATIVES",
     "SlangNormalizer",
     "normalizer",
+    "QwenAnalyzer",
+    "analyzer",
 ]
